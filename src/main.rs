@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use std::{io::{self, BufReader, BufWriter}, println};
+use std::{format, io::{self, BufReader, BufWriter}, println};
 use serde::{Serialize, Deserialize};
 use std::fs::File;
 
@@ -16,12 +16,11 @@ struct Account {
 
 impl Account {
     fn new(name: &str, phone_no:&str) -> Self {
-        
-        account_no = generate_account_number(phone_no);
-        
+        let acct_no = generate_account_number(phone_no);
+
         Self {
             account_name: String::from(name), 
-            account_number: account_no, 
+            account_number: acct_no, 
             phone_number: String::from(phone_no), 
             balance: 0.0
         }
@@ -49,10 +48,13 @@ fn main() {
                     }
                 };
 
-                let phone_number = phone_number.to_string();
+                // let phone_number = phone_number.to_string();
+
+                let phone_number = format!("0{}", phone_number.to_string());
                 if phone_number.len() < 11 {
                     println!("Phone number should be up to 11 digits")
                 }else {
+                    // println!("Number: {}", phone_number);
                     create_account(&full_name, &phone_number);
                 }
             },
@@ -87,7 +89,7 @@ fn load_data(path:&str) -> Vec<Account>{
     let file = match File::open(path) {
         Ok(file ) => file,
         Err(err) => {
-            println!("File filed to open with the following error: {}", err);
+            // println!("File failed to open with the following error: {}", err);
             return Vec::new();
         }
     };
@@ -106,7 +108,7 @@ fn load_data(path:&str) -> Vec<Account>{
 }
 
 
-fn save_to_db(path:&str, database: &Vec<Account>) -> bool {
+fn save_to_db(path:&str, database: Vec<Account>) -> bool {
     let file = match File::create(path) {
         Ok(file) => file,
         Err(err) => {
@@ -126,14 +128,13 @@ fn save_to_db(path:&str, database: &Vec<Account>) -> bool {
 
 fn create_account(full_name:&str, phone_no:&str) {
     let path = "database.json";
-    let db = load_data(path);
-    let mut acct_no = String::new();
+    let mut db = load_data(path);
+
 
     for account in db.iter(){
         if account.account_number == generate_account_number(phone_no){
             println!("The Phone number has been used!");
-        }else {
-            acct_no = generate_account_number(phone_no)
+            return;
         }
     }
 
@@ -141,7 +142,7 @@ fn create_account(full_name:&str, phone_no:&str) {
 
     db.push(new_account);
 
-    let saved = save_to_db(path, &db);
+    let saved = save_to_db(path, db);
 
     if saved{
         println!("Account Created Successfully!");
