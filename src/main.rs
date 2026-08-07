@@ -29,6 +29,7 @@ impl Account {
 
 fn main() {
     println!("CLI BANKING SYSTEM");
+    let path = "database.json";
     
     loop {
         println!("List of Operations:\n1. Create Account\n2. View Account\n3. Deposit Money\n4. Withdraw Money\n5. Transfer Money\n6. List Accounts\n7. Exit");
@@ -59,6 +60,28 @@ fn main() {
                 }
             },
 
+            "2" => {
+                let phone_no = &user_input("Enter your Phone number: ");
+                let phone_number = match phone_no.trim().parse::<i64>() {
+                    Ok(num) => num,
+                    Err(err) => {
+                        println!("Phone number should be only number digits");
+                        return;
+                    }
+                };
+
+                // let phone_number = phone_number.to_string();
+
+                let phone_number = format!("0{}", phone_number.to_string());
+                if phone_number.len() < 11 {
+                    println!("Phone number should be up to 11 digits")
+                }else {
+                    // println!("Number: {}", phone_number);
+                    view_account(&phone_number, path);
+                }
+                
+            },
+
 
             _ => {
                 println!("Invalid Input")
@@ -70,7 +93,6 @@ fn main() {
 fn generate_account_number(phone_no:&str) -> String {
     let number = (phone_no.len()-10);
     let new_number = &phone_no[number..];
-
     String::from(new_number)
 }
 
@@ -105,6 +127,16 @@ fn load_data(path:&str) -> Vec<Account>{
     };
 
     db
+}
+
+fn user_data_output(account:&Account){
+    println!(
+        "\nFull Name: {}Account Number: {}\nPhone Number: {}\nAccount Balance: {:.2}\n==============================\n",
+        account.account_name,
+        account.account_number,
+        account.phone_number,
+        account.balance
+    )
 }
 
 
@@ -150,4 +182,20 @@ fn create_account(full_name:&str, phone_no:&str) {
         println!("Account Not Creaeted")
     }
 
+}
+
+
+fn view_account(phone_no:&str, path:&str) {
+    let acct_number = generate_account_number(phone_no);
+    let db = load_data(path);
+
+    for account in db.iter(){
+        if account.account_number == acct_number {
+            println!("User Account Information:");
+            user_data_output(account);
+            // return;
+        }else {
+            println!("User Account not Found!")
+        }
+    }
 }
