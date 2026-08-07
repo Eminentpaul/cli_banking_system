@@ -1,9 +1,10 @@
 #![allow(unused)]
 
 use std::println;
+use serde::{Serialize, Deserialize};
 
 
-
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Account {
     account_name: String,
     account_number: String,
