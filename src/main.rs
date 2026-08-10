@@ -95,7 +95,35 @@ fn main() {
                 if deposit_money(&phone_number, amount, path){
                         println!("N{:.2} deposited Successfully into the account", amount)
                     }else {
-                        println!("Deposit not Successfully!")
+                        println!("Deposit not Successful!")
+                    }
+                
+            },
+
+            "4" => {
+                let phone_no = &user_input("Enter your Phone number: ");
+                
+                let amount = &user_input("Enter Amount: ");
+                let amount = match check_amount(amount) {
+                    Ok(amount) => amount,
+                    Err(err) => {
+                        println!("{}", err);
+                        return; 
+                    }
+                };
+
+                let phone_number = match check_phone_no(phone_no) {
+                    Ok(phone) => phone,
+                    Err(err) => {
+                        println!("{}", err);
+                        return;
+                    }
+                };
+
+                if withdraw_money(&phone_number, amount, path){
+                        println!("N{:.2} withdrawed Successfully from the account", amount)
+                    }else {
+                        println!("Withdrawal not Successful!")
                     }
                 
             },
@@ -287,6 +315,31 @@ fn deposit_money(phone_no: &str, amount: f64, path: &str) -> bool {
             save_to_db(path, db);
 
             return true;
+        }
+    }
+
+    println!("Account not Found!");
+    false
+}
+
+
+fn withdraw_money(phone_no: &str, amount: f64, path: &str) -> bool {
+    let acct_number = generate_account_number(phone_no);
+
+    let mut db = load_data(path);
+
+    for account in db.iter_mut() {
+        if account.account_number == acct_number {
+            if account.balance < amount {
+                println!("Insufficient Balance for withdrawal");
+                return false;
+            }else {
+                account.balance -= amount;
+
+                save_to_db(path, db);
+
+                return true;
+            }
         }
     }
 
