@@ -1,7 +1,8 @@
 #![allow(unused)]
 
-use std::{format, io::{self, BufReader, BufWriter}, println};
+use std::{format, io::{self, BufReader, BufWriter}, path, println, sync::{Arc, Mutex}, thread::{self, JoinHandle}};
 use serde::{Serialize, Deserialize};
+use serde_json::Value::Null;
 use std::fs::File;
 
 
@@ -41,44 +42,61 @@ fn main() {
                 let full_name = user_input("Enter your Full Name:");
                 let phone_number = user_input("Enter your Phone Number");
 
-                let phone_number = match phone_number.trim().parse::<i64>() {
-                    Ok(num) => num,
+                match check_phone_no(&phone_number) {
+                    Ok(phone) => {
+
+                        create_account(&full_name, &phone);
+                    },
                     Err(err) => {
-                        println!("Phone number should be only number digits");
-                        return;
+                        println!("{}", err);
                     }
-                };
-
-                // let phone_number = phone_number.to_string();
-
-                let phone_number = format!("0{}", phone_number.to_string());
-                if phone_number.len() < 11 {
-                    println!("Phone number should be up to 11 digits")
-                }else {
-                    // println!("Number: {}", phone_number);
-                    create_account(&full_name, &phone_number);
                 }
+                
+                
             },
 
             "2" => {
                 let phone_no = &user_input("Enter your Phone number: ");
-                let phone_number = match phone_no.trim().parse::<i64>() {
-                    Ok(num) => num,
+                
+                let phone_no = match check_phone_no(phone_no) {
+                    Ok(phone) => phone,
                     Err(err) => {
-                        println!("Phone number should be only number digits");
+                        println!("{}", err);
                         return;
                     }
                 };
 
-                // let phone_number = phone_number.to_string();
+                view_account(&phone_no, path);
+                
+                
+                
+            },
 
-                let phone_number = format!("0{}", phone_number.to_string());
-                if phone_number.len() < 11 {
-                    println!("Phone number should be up to 11 digits")
-                }else {
-                    // println!("Number: {}", phone_number);
-                    view_account(&phone_number, path);
-                }
+            "3" => {
+                let phone_no = &user_input("Enter your Phone number: ");
+                
+                let amount = &user_input("Enter Amount: ");
+                let amount = match check_amount(amount) {
+                    Ok(amount) => amount,
+                    Err(err) => {
+                        println!("{}", err);
+                        return; 
+                    }
+                };
+
+                let phone_number = match check_phone_no(phone_no) {
+                    Ok(phone) => phone,
+                    Err(err) => {
+                        println!("{}", err);
+                        return;
+                    }
+                };
+
+                if deposit_money(&phone_number, amount, path){
+                        println!("N{:.2} deposited Successfully into the account", amount)
+                    }else {
+                        println!("Deposit not Successfully!")
+                    }
                 
             },
 
@@ -105,6 +123,61 @@ fn user_input(option:&str) -> String {
 
     input
 }
+
+
+fn check_phone_no(phone_no: &str) -> Result<String, String> {
+    // let phone_number = match phone_no.trim().parse::<i64>() {
+    //     Ok(num) => num,
+    //     Err(err) => {
+    //         println!("Phone number should be only number digits");
+    //         return "".to_string();
+    //     }
+    // };
+
+    // // let phone_number = phone_number.to_string();
+
+    // let phone_number = format!("0{}", phone_number.to_string());
+    // if phone_number.len() != 11 {
+    //     println!("Phone number should be up to 11 digits");
+    //     "".to_string()
+    // }else {
+    //     // println!("Number: {}", phone_number);
+    //     phone_number
+    // }
+
+    let phone_no = phone_no.trim();
+
+    if !phone_no.chars().all(|c| c.is_ascii_digit()) {
+        return Err("Phone number should contain only digits".to_string());
+    }
+
+    if !phone_no.starts_with("0") {
+        return Err("Phone Number must start with zeror".to_string());
+    }
+
+    if phone_no.len() != 11 {
+        return Err("Phone number must be 11 digits".to_string());
+    }
+
+
+
+    Ok(phone_no.to_string())
+}
+
+
+
+fn check_amount(amount: &str) -> Result<f64, String> {
+    let amount = match amount.trim().parse::<f64>() {
+        Ok(num) => num,
+        Err(err) => {
+            return Err("Invalid Input for the Amount".to_string());
+            
+        }
+    };
+
+    Ok(amount)
+}
+
 
 fn load_data(path:&str) -> Vec<Account>{
 
@@ -198,4 +271,25 @@ fn view_account(phone_no:&str, path:&str) {
             println!("User Account not Found!")
         }
     }
+}
+
+
+
+fn deposit_money(phone_no: &str, amount: f64, path: &str) -> bool {
+    let acct_number = generate_account_number(phone_no);
+
+    let mut db = load_data(path);
+
+    for account in db.iter_mut() {
+        if account.account_number == acct_number {
+            account.balance += amount;
+
+            save_to_db(path, db);
+
+            return true;
+        }
+    }
+
+    println!("Account not Found!");
+    false
 }
