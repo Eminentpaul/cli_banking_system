@@ -1,8 +1,7 @@
 #![allow(unused)]
 
-use std::{format, io::{self, BufReader, BufWriter}, path, println, sync::{Arc, Mutex}, thread::{self, JoinHandle}};
+use std::{io::{self, BufReader, BufWriter}};
 use serde::{Serialize, Deserialize};
-use serde_json::Value::Null;
 use std::fs::File;
 
 
@@ -128,6 +127,67 @@ fn main() {
                 
             },
 
+            "5" => {
+                let sender_phone_number = user_input("Enter Sender's Phone Number:");
+                let sender_phone_number = match check_phone_no(&sender_phone_number) {
+                    Ok(phone) => phone,
+                    Err(err) => {
+                        println!("Sender: {}", err);
+                        return;
+                    }
+                };
+
+                let mut sender_account = match check_account_availability(&sender_phone_number, path, "Sender") {
+                    Ok(acc) => acc,
+                    Err(err) => {
+                        println!("{}", err);
+                        return;
+                    }
+                };
+
+                let receiver_phone_number = user_input("Enter Receiver's Phone Number:");
+                let receiver_phone_number = match check_phone_no(&receiver_phone_number) {
+                    Ok(phone) => phone,
+                    Err(err) => {
+                        println!("Sender: {}", err);
+                        return;
+                    }
+                };
+
+                let mut receiver_account = match check_account_availability(&receiver_phone_number, path, "Receiver") {
+                    Ok(acc) => acc,
+                    Err(err) => {
+                        println!("{}", err);
+                        return;
+                    }
+                };
+
+                let amount = user_input("Enter Amount:");
+                let amount = match check_amount(&amount) {
+                    Ok(amount) => amount,
+                    Err(err) => {
+                        println!("{}", err);
+                        return;
+                    }
+                };
+
+                if transfer(&mut sender_account, &mut receiver_account, amount, path){
+                    println!("Transaction Successful")
+                }else {
+                    println!("Transaction not Successful")
+                }
+            },
+
+            "6" => {
+                println!("List of All the Accounts");
+                list_accounts(path);
+            }
+
+            "7" => {
+                println!("Exiting.....");
+                break;
+            },
+
 
             _ => {
                 println!("Invalid Input")
@@ -137,7 +197,7 @@ fn main() {
 }
 
 fn generate_account_number(phone_no:&str) -> String {
-    let number = (phone_no.len()-10);
+    let number = phone_no.len()-10;
     let new_number = &phone_no[number..];
     String::from(new_number)
 }
@@ -258,6 +318,19 @@ fn save_to_db(path:&str, database: Vec<Account>) -> bool {
 }
 
 
+fn check_account_availability(phone_no: &str, path:&str, option: &str) -> Result<Account, String> {
+    let database = load_data(path);
+
+    for account in database.iter(){
+        if account.account_number == generate_account_number(phone_no) {
+            return Ok(account.clone());
+        }
+    }
+    let error = format!("{} Account Not available", option);
+    return Err(error.to_string());
+}
+
+
 
 fn create_account(full_name:&str, phone_no:&str) {
     let path = "database.json";
@@ -345,4 +418,71 @@ fn withdraw_money(phone_no: &str, amount: f64, path: &str) -> bool {
 
     println!("Account not Found!");
     false
+}
+
+
+
+fn transfer(sender: &mut Account, receiver: &mut Account, amount: f64, path:&str) -> bool {
+    let mut db = load_data(path);
+
+    // for account in db.iter_mut(){
+    //     if account.account_number == sender.account_number {
+    //         if sender.balance < amount {
+    //             println!("Insufficient Fund to complete the transsaction");
+    //             return false;
+    //         }else {
+    //             if account.account_number == receiver.account_number {
+    //                 sender.balance -= amount;
+    //                 receiver.balance += amount;
+
+    //                 save_to_db(path, db);
+    //                 return true
+    //             }
+    //         }
+    //     }
+    // }
+
+    // false
+
+    
+    let sender_index = match db.iter().position(|c| c.account_number == sender.account_number) {
+        Some(index ) => index,
+        None => {
+            println!("Sender Account not found!");
+            return  false;
+        }
+    };
+
+    let receiver_index = match db.iter().position(|c| c.account_number == receiver.account_number) {
+        Some(index) => index,
+        None => {
+            println!("Receiver Account not found!");
+            return false;
+        }
+    };
+
+    if sender_index == receiver_index {
+        println!("Cannot Transfer fund between the same account");
+        return false;
+    }
+
+    if db[sender_index].balance < amount {
+        println!("Insufficient Fund to complete the Transaction");
+        return false;
+    }
+
+    db[sender_index].balance -= amount;
+    db[receiver_index].balance += amount;
+    save_to_db(path, db);
+
+    true
+}
+
+
+fn list_accounts(path:&str) {
+    let db = load_data(path);
+
+    for account in db.iter() {
+        user_data_output(account);
+    }
 }
